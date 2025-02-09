@@ -1,0 +1,30 @@
+trulens
+trulens-apps-llamaindex
+trulens-providers-openai
+llama_index
+# !pip install trulens_eval==0.19.0  # or 0.18.1
+# pip install --upgrade huggingface_hub
+# For loading environment variables
+python-dotenv
+
+# For numeric computations
+numpy
+
+# For handling async loops in notebooks/scripts
+nest_asyncio
+
+# For calling OpenAI's API
+openai
+
+# LlamaIndex is the library formerly known as GPT Index.
+# The `[pdf]` extra ensures that PDF dependencies (like PyMuPDF or pdfminer) get installed
+# so that SimpleDirectoryReader can load PDF files properly.
+llama-index[pdf]
+
+# TruLens for model evaluation and feedback
+# trulens-eval
+
+# For local embeddings/models (BAAI/bge-small-en-v1.5, BAAI/bge-reranker-base)
+torch
+transformers
+sentence-transformers
