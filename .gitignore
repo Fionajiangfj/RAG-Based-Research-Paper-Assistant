@@ -75,6 +75,7 @@ docs/_build/
 .pybuilder/
 target/
 merging_index/
+merging_index_test1/
 
 # Jupyter Notebook
 .ipynb_checkpoints

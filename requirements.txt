@@ -28,3 +28,10 @@ llama-index[pdf]
 torch
 transformers
 sentence-transformers
+
+# Pinecone for vector database
+pinecone
+pinecone[grpc]
+pinecone[asyncio]
+pinecone-plugin-assistant
+llama-index-vector-stores-pinecone
