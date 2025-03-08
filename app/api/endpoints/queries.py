@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
@@ -9,6 +10,8 @@ from app.rag.document_processor import DocumentProcessor
 router = APIRouter()
 index_manager = IndexManager()
 document_processor = DocumentProcessor()
+
+logger = logging.getLogger(__name__)
 
 class QueryRequest(BaseModel):
     query: str
@@ -25,36 +28,40 @@ class QueryResponse(BaseModel):
 async def ensure_index_exists():
     """Ensure search index exists and is populated"""
     try:
+        # Try to get existing index first
         index = index_manager.get_index()
-        if index is None:
-            # Process all documents
-            nodes, leaf_nodes = document_processor.process_directory()
-            if not nodes or not leaf_nodes:
-                raise HTTPException(
-                    status_code=500,
-                    detail="No documents found to process"
-                )
+        if index is not None:
+            return index
             
-            # Verify nodes are stored and update index
-            stored_nodes = index_manager.node_store.load_nodes()
-            if not stored_nodes:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Failed to store document nodes in database"
-                )
+        # If index is None, check if we have stored nodes in the database
+        stored_nodes = index_manager.node_store.load_nodes()
+        if stored_nodes:
+            # We have nodes in database but not in the index, let's update the index
+            logger.info(f"Found {len(stored_nodes)} nodes in database, rebuilding index")
             
-            # Reinitialize storage context with new nodes
+            # Reinitialize storage context with existing nodes
             index_manager._init_storage_context()
             
-            # Create the index
+            # Create the index (we'll pass stored_nodes as both nodes and leaf_nodes)
+            # This will update the vector store with the existing nodes
+            index = index_manager.index_documents(stored_nodes, stored_nodes)
+            return index
+            
+        # If we get here, there's no index and no stored nodes
+        # Try processing documents as a last resort
+        nodes, leaf_nodes = document_processor.process_directory()
+        if nodes and leaf_nodes:
+            # Store and index the nodes
+            index_manager.node_store.store_nodes(nodes)
+            index_manager._init_storage_context()
             index = index_manager.index_documents(nodes, leaf_nodes)
-            if not index:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Failed to create search index"
-                )
-        
-        return index
+            return index
+            
+        # If we get here, we have no data at all
+        raise HTTPException(
+            status_code=500,
+            detail="No documents or stored nodes found. Knowledge base is empty."
+        )
     except Exception as e:
         raise HTTPException(
             status_code=500,
