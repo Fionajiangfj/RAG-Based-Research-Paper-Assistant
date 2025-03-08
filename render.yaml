@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: rag-research-paper-assistant
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX_NAME
+        value: rag-based-research-paper-assistant-v2
+      - key: PINECONE_ENVIRONMENT
+        value: us-east-1
+      - key: DATABASE_URL
+        value: sqlite:///./prod.db
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.9.9 
