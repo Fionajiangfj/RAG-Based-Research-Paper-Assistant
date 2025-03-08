@@ -1,6 +1,6 @@
-trulens
-trulens-apps-llamaindex
-trulens-providers-openai
+# trulens
+# trulens-apps-llamaindex
+# trulens-providers-openai
 llama_index
 # !pip install trulens_eval==0.19.0  # or 0.18.1
 # pip install --upgrade huggingface_hub
@@ -31,10 +31,9 @@ transformers>=4.30.0
 sentence-transformers>=2.2.2
 
 # Pinecone for vector database
-pinecone-client>=2.2.1
-pinecone[grpc]
-pinecone[asyncio]
-pinecone-plugin-assistant
+pinecone-client>=2.2.4
+# Removed pinecone[grpc] and pinecone[asyncio] to use standard format
+# Removed pinecone-plugin-assistant as it depends on deprecated package
 llama-index-vector-stores-pinecone
 
 fastapi>=0.95.0
