@@ -8,12 +8,19 @@ services:
       - key: PINECONE_API_KEY
         sync: false
       - key: PINECONE_INDEX_NAME
-        value: rag-based-research-paper-assistant-v2
+        value: rag-based-research-paper-assistant-v3
       - key: PINECONE_ENVIRONMENT
         value: us-east-1
       - key: DATABASE_URL
-        value: sqlite:///./prod.db
+        fromDatabase:
+          name: rag-research-paper-db-v2
+          property: connectionString
       - key: SECRET_KEY
         generateValue: true
       - key: PYTHON_VERSION
-        value: 3.9.9 
+        value: 3.9.9
+
+databases:
+  - name: rag-research-paper-db-v2
+    databaseName: ragdb_j661
+    user: ragdb_j661_user
