@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from app.api.endpoints import papers, queries
 from app.core.config import settings
 from app.db.database import init_db
+from app.api.endpoints.queries import initialize_index
 
 # Configure logging
 logging.basicConfig(
@@ -22,6 +23,14 @@ async def lifespan(app: FastAPI):
     # Startup
     init_db()
     logging.info("Database initialized during startup")
+    
+    # Initialize index on startup
+    try:
+        await initialize_index()
+        logging.info("Search index initialized during startup")
+    except Exception as e:
+        logging.error(f"Error initializing search index: {str(e)}")
+    
     yield
     # Shutdown
     pass
