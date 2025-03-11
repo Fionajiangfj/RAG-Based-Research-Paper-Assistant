@@ -152,3 +152,13 @@ class IndexManager:
         except Exception as e:
             logger.error(f"Error cleaning up documents: {str(e)}")
             raise 
+
+    def delete_vector_database(self):
+        """Delete the entire Pinecone index"""
+        try:
+            # Delete the entire index
+            self.pinecone_client.delete_index(self.index_name)
+            logger.info(f"Deleted Pinecone index: {self.index_name}")
+        except Exception as e:
+            logger.error(f"Error deleting Pinecone index: {str(e)}")
+            raise

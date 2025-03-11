@@ -71,3 +71,14 @@ class NodeStore:
         except Exception as e:
             logger.error(f"Error cleaning up nodes: {str(e)}")
             raise 
+
+    def delete_all_nodes(self):
+        """Delete all nodes from database"""
+        try:
+            with SessionLocal() as db:
+                db.query(Document).delete(synchronize_session=False)
+                db.commit()
+                logger.info("Deleted all nodes from database")
+        except Exception as e:
+            logger.error(f"Error deleting all nodes: {str(e)}")
+            raise
