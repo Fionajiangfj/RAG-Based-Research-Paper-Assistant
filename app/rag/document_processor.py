@@ -34,8 +34,17 @@ class DocumentProcessor:
                 logger.error(f"No content extracted from {file_path}")
                 return None, None
             
+            # Clean text by creating new documents without null characters
+            cleaned_docs = []
+            for doc in documents:
+                # Replace null characters with empty string
+                cleaned_text = doc.text.replace('\x00', '')
+                # Create new Document instead of modifying existing one
+                new_doc = Document(text=cleaned_text, metadata=doc.metadata)
+                cleaned_docs.append(new_doc)
+            
             # Combine all documents into one
-            combined_doc = Document(text="\n\n".join([doc.text for doc in documents]))
+            combined_doc = Document(text="\n\n".join([doc.text for doc in cleaned_docs]))
             
             # Parse into hierarchical nodes
             nodes = self.node_parser.get_nodes_from_documents([combined_doc])
@@ -67,8 +76,17 @@ class DocumentProcessor:
                 logger.warning(f"No documents found in {self.upload_dir}")
                 return None, None
             
+            # Clean text by creating new documents without null characters
+            cleaned_docs = []
+            for doc in documents:
+                # Replace null characters with empty string
+                cleaned_text = doc.text.replace('\x00', '')
+                # Create new Document instead of modifying existing one
+                new_doc = Document(text=cleaned_text, metadata=doc.metadata)
+                cleaned_docs.append(new_doc)
+            
             # Combine all documents into one
-            combined_doc = Document(text="\n\n".join([doc.text for doc in documents]))
+            combined_doc = Document(text="\n\n".join([doc.text for doc in cleaned_docs]))
             
             # Parse into hierarchical nodes
             nodes = self.node_parser.get_nodes_from_documents([combined_doc])

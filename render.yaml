@@ -13,7 +13,7 @@ services:
         value: us-east-1
       - key: DATABASE_URL
         fromDatabase:
-          name: rag-research-paper-db-v2
+          name: rag-research-paper-db-v3
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
@@ -21,6 +21,6 @@ services:
         value: 3.9.9
 
 databases:
-  - name: rag-research-paper-db-v2
-    databaseName: ragdb_j661
-    user: ragdb_j661_user
+  - name: rag-research-paper-db-v3
+    databaseName: ragdb_v3
+    user: ragdb_v3_user

@@ -125,4 +125,32 @@ async def refresh_index():
         raise HTTPException(
             status_code=500,
             detail=f"Error refreshing index: {str(e)}"
-        ) 
+        )
+    
+@router.post("/rebuild-all-papers")
+async def rebuild_all_papers():
+    """Rebuild all papers"""
+    global global_index, global_query_processor
+    
+    try:
+        # Reset the globals
+        global_index = None
+        global_query_processor = None
+
+        # Delete all nodes from database
+        index_manager.node_store.delete_all_nodes()
+
+        # Delete the Pinecone index
+        index_manager.delete_vector_database()
+        
+        # Reinitialize
+        await initialize_index()
+        
+        return {"status": "All papers rebuilt successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error rebuilding all papers: {str(e)}"
+        )
