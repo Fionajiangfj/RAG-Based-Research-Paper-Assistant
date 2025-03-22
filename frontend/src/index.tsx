@@ -17,3 +17,14 @@ root.render(
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
+
+export interface QueryResponse {
+  answer: string;
+  source_nodes: SourceNode[];
+}
+
+export interface SourceNode {
+  text: string;
+  score?: number;
+  doc_id?: string;
+}
