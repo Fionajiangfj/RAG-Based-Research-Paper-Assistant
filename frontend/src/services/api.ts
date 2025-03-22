@@ -2,7 +2,7 @@ import axios from 'axios';
 import { QueryResponse } from '../types';
 
 // Use environment variable for API URL, fallback to localhost for development
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -13,7 +13,7 @@ const api = axios.create({
 
 export const submitQuery = async (query: string): Promise<QueryResponse> => {
   try {
-    const response = await api.post<QueryResponse>('/query', { query });
+    const response = await api.post<QueryResponse>('/queries', { query });
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
