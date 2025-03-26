@@ -5,11 +5,18 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Column, Integer, String, Text, DateTime
 from sqlalchemy.sql import func
-
 from app.core.config import settings
+from app.rag.redis_manager import RedisManager
+
+logger = logging.getLogger(__name__)
+
+# Create Redis manager
+redis_manager = RedisManager()
+
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 
 # Create SQLAlchemy engine
-engine = create_engine(settings.DATABASE_URL)
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -29,19 +36,26 @@ def get_db():
         db.close()
 
 def init_db():
-    Base.metadata.create_all(bind=engine)
-    print("Database initialized")
-    
-    # Test connection with proper text() wrapper
+    """Initialize the database"""
     try:
-        with engine.connect() as connection:
-            result = connection.execute(text("SELECT 1")).fetchone()
-            if result and result[0] == 1:
-                print("Database connection test successful!")
-            else:
-                print("Database connection test returned unexpected result")
+        # Check if database is already initialized in Redis
+        if redis_manager.redis_client.get("db_initialized"):
+            return  # Silently return if already initialized
+
+        # Create all tables
+        Base.metadata.create_all(bind=engine)
+        
+        # Test database connection
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+        
+        # Mark database as initialized in Redis
+        redis_manager.redis_client.set("db_initialized", "true")
+        logger.info("Database initialized")
+        
     except Exception as e:
-        print(f"Connection error: {str(e)}")
+        logger.error(f"Error initializing database: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     init_db()
@@ -50,7 +64,7 @@ def test_connection():
     db = next(get_db())
     try:
         # Execute a simple query
-        result = db.execute("SELECT *").fetchone()
+        result = db.execute(text("SELECT 1")).fetchone()
         if result[0] == 1:
             print("Database connection successful!")
         else:

@@ -2,18 +2,17 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
+import pickle
 
 from app.rag.index_manager import IndexManager
 from app.rag.query_engine import QueryProcessor
 from app.rag.document_processor import DocumentProcessor
+from app.rag.redis_manager import RedisManager
 
 router = APIRouter()
 index_manager = IndexManager()
 document_processor = DocumentProcessor()
-
-# Global variables to store the index and query processor
-global_index = None
-global_query_processor = None
+redis_manager = RedisManager()
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +30,18 @@ class QueryResponse(BaseModel):
 
 async def initialize_index():
     """Initialize the index once at startup"""
-    global global_index, global_query_processor
-    
-    if global_index is not None:
-        return global_index
-        
     try:
+        # Check if index is already initialized in Redis
+        if redis_manager.is_initialized():
+            logger.info("Using existing index from Redis")
+            return index_manager.get_index()
+            
         # Try to get existing index
         index = index_manager.get_index()
         if index is not None:
-            global_index = index
-            global_query_processor = QueryProcessor(global_index)
-            return global_index
+            # Store index state in Redis
+            redis_manager.mark_initialized()
+            return index
             
         # If index is None, check if we have stored nodes in the database
         stored_nodes = index_manager.node_store.load_nodes()
@@ -55,9 +54,9 @@ async def initialize_index():
             
             # Create the index
             index = index_manager.index_documents(stored_nodes, stored_nodes)
-            global_index = index
-            global_query_processor = QueryProcessor(global_index)
-            return global_index
+            # Store index state in Redis
+            redis_manager.mark_initialized()
+            return index
             
         # If we get here, there's no index and no stored nodes
         # Process documents as a last resort
@@ -67,9 +66,9 @@ async def initialize_index():
             index_manager.node_store.store_nodes(nodes)
             index_manager._init_storage_context()
             index = index_manager.index_documents(nodes, leaf_nodes)
-            global_index = index
-            global_query_processor = QueryProcessor(global_index)
-            return global_index
+            # Store index state in Redis
+            redis_manager.mark_initialized()
+            return index
             
         # If we get here, we have no data at all
         raise HTTPException(
@@ -85,15 +84,17 @@ async def initialize_index():
 @router.post("/", response_model=QueryResponse)
 async def process_query(query_request: QueryRequest):
     """Process a query against the research papers"""
-    global global_index, global_query_processor
-    
     try:
-        # Initialize index if not already done
-        if global_index is None:
-            await initialize_index()
+        # Get query processor (it will handle initialization if needed)
+        query_processor = index_manager.get_query_processor()
+        if query_processor is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Index not initialized"
+            )
             
-        # Use the global query processor
-        result = global_query_processor.process_query(query_request.query)
+        # Process the query
+        result = query_processor.process_query(query_request.query)
         
         return result
     except HTTPException:
@@ -108,12 +109,9 @@ async def process_query(query_request: QueryRequest):
 @router.post("/refresh-index")
 async def refresh_index():
     """Force refresh the index - use when new documents are added"""
-    global global_index, global_query_processor
-    
     try:
-        # Reset the globals
-        global_index = None
-        global_query_processor = None
+        # Clear Redis state
+        redis_manager.clear_all()
         
         # Reinitialize
         await initialize_index()
@@ -130,12 +128,9 @@ async def refresh_index():
 @router.post("/rebuild-all-papers")
 async def rebuild_all_papers():
     """Rebuild all papers"""
-    global global_index, global_query_processor
-    
     try:
-        # Reset the globals
-        global_index = None
-        global_query_processor = None
+        # Clear Redis state
+        redis_manager.clear_all()
 
         # Delete all nodes from database
         index_manager.node_store.delete_all_nodes()

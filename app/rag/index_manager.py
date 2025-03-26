@@ -5,12 +5,18 @@ from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.core.storage.docstore import SimpleDocumentStore
 import json
+import threading
 
 from app.core.config import settings
 from app.db.database import SessionLocal, Document
 from app.rag.node_store import NodeStore
+from app.rag.redis_manager import RedisManager
+from app.rag.query_engine import QueryProcessor
 
 logger = logging.getLogger(__name__)
+
+# Global lock for Redis operations
+redis_lock = threading.Lock()
 
 class IndexManager:
     def __init__(self):
@@ -22,6 +28,8 @@ class IndexManager:
         self.vector_store = None
         self.storage_context = None
         self.node_store = NodeStore()
+        self.redis_manager = RedisManager()
+        self._query_processor = None
         
         # Initialize Pinecone
         self._init_pinecone()
@@ -70,10 +78,30 @@ class IndexManager:
     def _init_storage_context(self):
         """Initialize storage context with existing nodes"""
         self.storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
-        nodes = self.node_store.load_nodes()
-        if nodes:
-            self.storage_context.docstore.add_documents(nodes)
-            logger.info(f"Initialized storage context with {len(nodes)} documents")
+        
+        # Use lock to prevent multiple workers from loading nodes simultaneously
+        with redis_lock:
+            # Check if nodes are already in Redis
+            nodes = self.redis_manager.get_nodes()
+            if not nodes:
+                # If not in Redis, load from database and store in Redis
+                nodes = self.node_store.load_nodes()
+                if nodes:
+                    self.redis_manager.store_nodes(nodes)
+                    self.storage_context.docstore.add_documents(nodes)
+                    logger.info(f"Initialized storage context with {len(nodes)} documents")
+            else:
+                # Use nodes from Redis
+                self.storage_context.docstore.add_documents(nodes)
+                logger.info(f"Initialized storage context with {len(nodes)} documents from Redis")
+    
+    def get_query_processor(self):
+        """Get or create query processor"""
+        if self._query_processor is None:
+            index = self.get_index()
+            if index is not None:
+                self._query_processor = QueryProcessor(index)
+        return self._query_processor
     
     def index_documents(self, nodes, leaf_nodes):
         """Index documents to Pinecone"""
@@ -83,7 +111,12 @@ class IndexManager:
             
             # Always update storage context with all nodes
             self.storage_context.docstore.add_documents(nodes)
-            logger.info(f"Added {len(nodes)} nodes to storage context")
+            
+            # Use lock to prevent multiple workers from storing in Redis simultaneously
+            with redis_lock:
+                # Store nodes in Redis
+                self.redis_manager.store_nodes(nodes)
+                logger.info(f"Added {len(nodes)} nodes to storage context and Redis")
             
             if index_stats.total_vector_count == 0:
                 logger.info("Index is empty, indexing documents")
@@ -101,7 +134,11 @@ class IndexManager:
                     storage_context=self.storage_context
                 )
             
-            logger.info(f"Index stats: {index_stats}")
+            # Store index stats in Redis with lock
+            with redis_lock:
+                self.redis_manager.store_index_stats(index_stats)
+                logger.info(f"Index stats: {index_stats}")
+            
             return index
             
         except Exception as e:
@@ -111,6 +148,15 @@ class IndexManager:
     def get_index(self):
         """Get existing index from Pinecone"""
         try:
+            # Check if index is already initialized in Redis
+            if self.redis_manager.is_initialized():
+                # Create index from vector store with storage context
+                index = VectorStoreIndex.from_vector_store(
+                    vector_store=self.vector_store,
+                    storage_context=self.storage_context
+                )
+                return index
+            
             index_stats = self.pinecone_index.describe_index_stats()
             
             if index_stats.total_vector_count == 0:
@@ -124,7 +170,12 @@ class IndexManager:
             nodes = self.node_store.load_nodes()
             if nodes:
                 self.storage_context.docstore.add_documents(nodes)
-                logger.info(f"Loaded {len(nodes)} documents into storage context")
+                # Store in Redis for future use with lock
+                with redis_lock:
+                    self.redis_manager.store_nodes(nodes)
+                    self.redis_manager.store_index_stats(index_stats)
+                    self.redis_manager.mark_initialized()
+                    logger.info(f"Loaded {len(nodes)} documents into storage context and Redis")
             
             # Create index from vector store with storage context
             index = VectorStoreIndex.from_vector_store(
@@ -137,7 +188,7 @@ class IndexManager:
             
         except Exception as e:
             logger.error(f"Error getting index: {str(e)}")
-            raise 
+            raise
 
     def cleanup_documents(self, doc_ids):
         """Remove documents that no longer exist"""
@@ -151,14 +202,17 @@ class IndexManager:
                 logger.info("Cleaned up old documents from database")
         except Exception as e:
             logger.error(f"Error cleaning up documents: {str(e)}")
-            raise 
+            raise
 
     def delete_vector_database(self):
         """Delete the entire Pinecone index"""
         try:
             # Delete the entire index
             self.pinecone_client.delete_index(self.index_name)
-            logger.info(f"Deleted Pinecone index: {self.index_name}")
+            # Clear Redis data with lock
+            with redis_lock:
+                self.redis_manager.clear_all()
+            logger.info(f"Deleted Pinecone index: {self.index_name} and cleared Redis data")
         except Exception as e:
             logger.error(f"Error deleting Pinecone index: {str(e)}")
             raise
