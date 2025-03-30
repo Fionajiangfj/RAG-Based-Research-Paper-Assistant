@@ -15,8 +15,8 @@ class NodeStore:
         try:
             with SessionLocal() as db:
                 for node in nodes:
-                    logger.info(f"Storing node {node.node_id}")
-                    logger.info(f"Node metadata before storage: {node.metadata}")
+                    # logger.info(f"Storing node {node.node_id}")
+                    # logger.info(f"Node metadata before storage: {node.metadata}")
                     existing_doc = db.query(Document).filter(
                         Document.doc_id == node.node_id
                     ).first()
@@ -24,7 +24,7 @@ class NodeStore:
                     if existing_doc:
                         existing_doc.content = node.text
                         existing_doc.node_metadata = json.dumps(node.metadata) if node.metadata else None
-                        logger.info(f"Updated existing doc {node.node_id} with metadata: {node.metadata}")
+                        # logger.info(f"Updated existing doc {node.node_id} with metadata: {node.metadata}")
                     else:
                         doc = Document(
                             doc_id=node.node_id,
@@ -48,10 +48,10 @@ class NodeStore:
                     stored_docs = db.query(Document).all()
                     nodes = []
                     for doc in stored_docs:
-                        logger.info(f"Loading doc {doc.doc_id}")
-                        logger.info(f"Raw metadata from DB: {doc.node_metadata}")
+                        # logger.info(f"Loading doc {doc.doc_id}")
+                        # logger.info(f"Raw metadata from DB: {doc.node_metadata}")
                         metadata = json.loads(doc.node_metadata) if doc.node_metadata else {}
-                        logger.info(f"Parsed metadata: {metadata}")
+                        # logger.info(f"Parsed metadata: {metadata}")
                         llama_doc = LlamaDocument(
                             doc_id=doc.doc_id,
                             text=doc.content,

@@ -54,7 +54,7 @@ class RedisManager:
         """Store index statistics in Redis"""
         try:
             self.redis_client.set(self.index_stats_key, pickle.dumps(stats))
-            logger.info("Stored index stats in Redis")
+            # logger.info("Stored index stats in Redis")
         except Exception as e:
             logger.error(f"Error storing index stats in Redis: {str(e)}")
             raise
@@ -77,4 +77,13 @@ class RedisManager:
             logger.info("Cleared all Redis data")
         except Exception as e:
             logger.error(f"Error clearing Redis data: {str(e)}")
+            raise
+
+    def cleanup(self):
+        """Clean up Redis resources"""
+        try:
+            self.redis_client.close()
+            logger.info("Closed Redis connection")
+        except Exception as e:
+            logger.error(f"Error cleaning up Redis resources: {str(e)}")
             raise 

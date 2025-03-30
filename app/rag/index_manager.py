@@ -1,6 +1,6 @@
 import time
 import logging
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import Pinecone, ServerlessSpec, DeletionProtection
 from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.core.storage.docstore import SimpleDocumentStore
@@ -51,6 +51,8 @@ class IndexManager:
                 self.pinecone_client.create_index(
                     name=self.index_name,
                     dimension=1536,
+                    metric="cosine",
+                    deletion_protection=DeletionProtection.DISABLED,
                     spec=ServerlessSpec(
                         cloud="aws",
                         region=self.environment
@@ -125,7 +127,7 @@ class IndexManager:
                     leaf_nodes,
                     storage_context=self.storage_context,
                 )
-                logger.info(f"Indexed {len(leaf_nodes)} leaf nodes to Pinecone")
+                # logger.info(f"Indexed {len(leaf_nodes)} leaf nodes to Pinecone")
             else:
                 logger.info("Index already contains vectors, using existing embeddings")
                 # Use existing storage context and vector store
@@ -137,7 +139,7 @@ class IndexManager:
             # Store index stats in Redis with lock
             with redis_lock:
                 self.redis_manager.store_index_stats(index_stats)
-                logger.info(f"Index stats: {index_stats}")
+                # logger.info(f"Index stats: {index_stats}")
             
             return index
             
