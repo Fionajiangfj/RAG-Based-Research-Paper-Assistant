@@ -24,6 +24,11 @@ class DocumentProcessor:
     def process_file(self, file_path):
         """Process a single file and return nodes"""
         try:
+            # Extract filename and arxiv_id from file_path
+            filename = os.path.basename(file_path)
+            arxiv_id = os.path.splitext(filename)[0]  # Remove .pdf extension
+            arxiv_url = f"https://arxiv.org/pdf/{arxiv_id}"
+            
             # Load the document
             documents = SimpleDirectoryReader(
                 input_files=[file_path],
@@ -39,16 +44,26 @@ class DocumentProcessor:
             for doc in documents:
                 # Replace null characters with empty string
                 cleaned_text = doc.text.replace('\x00', '')
-                # Create new Document instead of modifying existing one
-                new_doc = Document(text=cleaned_text, metadata=doc.metadata)
+                # Create new Document with updated metadata
+                metadata = {
+                    'arxiv_url': arxiv_url
+                }
+                new_doc = Document(text=cleaned_text, metadata=metadata)
                 cleaned_docs.append(new_doc)
             
-            # Combine all documents into one
-            combined_doc = Document(text="\n\n".join([doc.text for doc in cleaned_docs]))
+            # Combine all documents into one while preserving metadata from the first document
+            combined_doc = Document(
+                text="\n\n".join([doc.text for doc in cleaned_docs]),
+                metadata=cleaned_docs[0].metadata if cleaned_docs else {}
+            )
             
             # Parse into hierarchical nodes
             nodes = self.node_parser.get_nodes_from_documents([combined_doc])
             leaf_nodes = get_leaf_nodes(nodes)
+            
+            # Ensure metadata is passed to leaf nodes
+            for node in leaf_nodes:
+                node.metadata = combined_doc.metadata
             
             logger.info(f"Processed {file_path}: {len(nodes)} nodes, {len(leaf_nodes)} leaf nodes")
             
@@ -81,16 +96,33 @@ class DocumentProcessor:
             for doc in documents:
                 # Replace null characters with empty string
                 cleaned_text = doc.text.replace('\x00', '')
-                # Create new Document instead of modifying existing one
-                new_doc = Document(text=cleaned_text, metadata=doc.metadata)
+                
+                # Extract metadata from file path
+                file_path = doc.metadata.get('file_path', '') if doc.metadata else ''
+                filename = os.path.basename(file_path)
+                arxiv_id = os.path.splitext(filename)[0]  # Remove .pdf extension
+                arxiv_url = f"https://arxiv.org/pdf/{arxiv_id}"
+                
+                # Create new Document with updated metadata
+                metadata = {
+                    'arxiv_url': arxiv_url
+                }
+                new_doc = Document(text=cleaned_text, metadata=metadata)
                 cleaned_docs.append(new_doc)
             
-            # Combine all documents into one
-            combined_doc = Document(text="\n\n".join([doc.text for doc in cleaned_docs]))
+            # Combine all documents into one while preserving metadata from the first document
+            combined_doc = Document(
+                text="\n\n".join([doc.text for doc in cleaned_docs]),
+                metadata=cleaned_docs[0].metadata if cleaned_docs else {}
+            )
             
             # Parse into hierarchical nodes
             nodes = self.node_parser.get_nodes_from_documents([combined_doc])
             leaf_nodes = get_leaf_nodes(nodes)
+            
+            # Ensure metadata is passed to leaf nodes
+            for node in leaf_nodes:
+                node.metadata = combined_doc.metadata
             
             logger.info(f"Processed directory {self.upload_dir}: {len(nodes)} nodes, {len(leaf_nodes)} leaf nodes")
             

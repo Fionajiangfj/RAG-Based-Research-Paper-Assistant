@@ -23,6 +23,7 @@ class SourceNode(BaseModel):
     text: str
     score: Optional[float] = None
     doc_id: Optional[str] = None
+    arxiv_url: Optional[str] = None
 
 class QueryResponse(BaseModel):
     answer: str

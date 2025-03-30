@@ -43,9 +43,7 @@ class QueryProcessor:
             logger.info("Attempting to query the engine...")
             response = self.query_engine.query(query_text)
             logger.info("Query completed successfully")
-            
-            # Log response details
-            logger.info(f"Query response: {str(response)}")
+
             if hasattr(response, 'source_nodes'):
                 logger.info(f"Number of source nodes: {len(response.source_nodes)}")
                 for idx, node in enumerate(response.source_nodes):
@@ -58,6 +56,15 @@ class QueryProcessor:
                         logger.info(f"  Score: {node.score}")
                     if hasattr(node, 'node') and hasattr(node.node, 'doc_id'):
                         logger.info(f"  Doc ID: {node.node.doc_id}")
+                    if hasattr(node, 'node') and hasattr(node.node, 'metadata'):
+                        logger.info(f"  Has metadata: True")
+                        logger.info(f"  Metadata keys: {list(node.node.metadata.keys())}")
+                        if 'arxiv_url' in node.node.metadata:
+                            logger.info(f"  arXiv URL: {node.node.metadata['arxiv_url']}")
+                        else:
+                            logger.info("  No arxiv_url in metadata")
+                    else:
+                        logger.info("  No metadata found")
 
             return {
                 "answer": str(response),
@@ -65,7 +72,8 @@ class QueryProcessor:
                     {
                         "text": node.node.text if hasattr(node.node, 'text') else str(node.node),
                         "score": node.score if hasattr(node, 'score') else None,
-                        "doc_id": node.node.doc_id if hasattr(node.node, 'doc_id') else None
+                        "doc_id": node.node.doc_id if hasattr(node.node, 'doc_id') else None,
+                        "arxiv_url": node.node.metadata.get('arxiv_url') if hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None
                     }
                     for node in response.source_nodes
                 ] if hasattr(response, 'source_nodes') else []
