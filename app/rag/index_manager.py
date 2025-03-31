@@ -4,6 +4,9 @@ from pinecone import Pinecone, ServerlessSpec, DeletionProtection
 from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.core.storage.docstore import SimpleDocumentStore
+from llama_index.embeddings.ollama import OllamaEmbedding
+from llama_index.core import Settings
+
 import json
 import threading
 
@@ -31,6 +34,13 @@ class IndexManager:
         self.redis_manager = RedisManager()
         self._query_processor = None
         
+        # Initialize Ollama embedding model and set it globally
+        self.embed_model = OllamaEmbedding(
+            model_name="nomic-embed-text",
+            base_url="http://localhost:11434"
+        )
+        Settings.embed_model = self.embed_model
+        
         # Initialize Pinecone
         self._init_pinecone()
         self._init_storage_context()
@@ -50,7 +60,7 @@ class IndexManager:
                 logger.info(f"Creating new Pinecone index: {self.index_name}")
                 self.pinecone_client.create_index(
                     name=self.index_name,
-                    dimension=1536,
+                    dimension=768,  
                     metric="cosine",
                     deletion_protection=DeletionProtection.DISABLED,
                     spec=ServerlessSpec(
@@ -65,7 +75,7 @@ class IndexManager:
             # Connect to index
             self.pinecone_index = self.pinecone_client.Index(self.index_name)
             
-            # Initialize vector store
+            # Initialize vector store with Ollama embedding model
             self.vector_store = PineconeVectorStore(
                 pinecone_index=self.pinecone_index,
                 text_key="text"
@@ -79,7 +89,9 @@ class IndexManager:
     
     def _init_storage_context(self):
         """Initialize storage context with existing nodes"""
-        self.storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
+        self.storage_context = StorageContext.from_defaults(
+            vector_store=self.vector_store
+        )
         
         # Use lock to prevent multiple workers from loading nodes simultaneously
         with redis_lock:
@@ -105,7 +117,7 @@ class IndexManager:
                 self._query_processor = QueryProcessor(index)
         return self._query_processor
     
-    def index_documents(self, nodes, leaf_nodes):
+    def index_documents(self, nodes):
         """Index documents to Pinecone"""
         try:
             # Only create embeddings if the index is empty
@@ -124,10 +136,9 @@ class IndexManager:
                 logger.info("Index is empty, indexing documents")
                 # Create vector store index with existing storage context
                 index = VectorStoreIndex(
-                    leaf_nodes,
-                    storage_context=self.storage_context,
+                    nodes,
+                    storage_context=self.storage_context
                 )
-                # logger.info(f"Indexed {len(leaf_nodes)} leaf nodes to Pinecone")
             else:
                 logger.info("Index already contains vectors, using existing embeddings")
                 # Use existing storage context and vector store
@@ -139,7 +150,6 @@ class IndexManager:
             # Store index stats in Redis with lock
             with redis_lock:
                 self.redis_manager.store_index_stats(index_stats)
-                # logger.info(f"Index stats: {index_stats}")
             
             return index
             
@@ -166,7 +176,9 @@ class IndexManager:
                 return None
             
             # Create storage context and load all documents
-            self.storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
+            self.storage_context = StorageContext.from_defaults(
+                vector_store=self.vector_store
+            )
             
             # Load documents from database to rebuild docstore
             nodes = self.node_store.load_nodes()
