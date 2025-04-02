@@ -37,7 +37,7 @@ class DocumentProcessor:
                 input_dir=self.upload_dir,
                 recursive=True,
                 filename_as_id=True,
-                required_exts=['.pdf']
+                required_exts=['.pdf'],
             ).load_data()
             
             if not documents:
@@ -58,15 +58,23 @@ class DocumentProcessor:
                 
                 # Create new Document with updated metadata
                 metadata = {
-                    'arxiv_url': arxiv_url
+                    'arxiv_url': arxiv_url,
+                    'filename': filename,
+                    'arxiv_id': arxiv_id
                 }
-                new_doc = Document(text=cleaned_text, metadata=metadata)
+                new_doc = Document(text=doc.text, metadata=metadata)
                 cleaned_docs.append(new_doc)
             
-            # Combine all documents into one while preserving metadata from the first document
+            # Combine all documents into one while preserving metadata from all documents
+            combined_metadata = {
+                'arxiv_urls': [doc.metadata.get('arxiv_url') for doc in cleaned_docs if doc.metadata and 'arxiv_url' in doc.metadata],
+                'filenames': [doc.metadata.get('filename') for doc in cleaned_docs if doc.metadata and 'filename' in doc.metadata],
+                'arxiv_ids': [doc.metadata.get('arxiv_id') for doc in cleaned_docs if doc.metadata and 'arxiv_id' in doc.metadata]
+            }
+            
             combined_doc = Document(
                 text="\n\n".join([doc.text for doc in cleaned_docs]),
-                metadata=cleaned_docs[0].metadata if cleaned_docs else {}
+                metadata=combined_metadata
             )
             
             # Parse into nodes using sentence splitter

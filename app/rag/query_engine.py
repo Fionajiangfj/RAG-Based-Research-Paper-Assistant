@@ -50,7 +50,7 @@ class QueryProcessor:
                     logger.info(f"Source node {idx + 1}:")
                     # Handle different node types
                     if hasattr(node, 'node'):
-                        text = node.node.text if hasattr(node.node, 'text') else str(node.node)
+                        text = node.node.get_text() if hasattr(node.node, 'text') else str(node.node)
                         logger.info(f"  Text: {text[:200]}...")  # First 200 chars
                     if hasattr(node, 'score'):
                         logger.info(f"  Score: {node.score}")
@@ -59,10 +59,10 @@ class QueryProcessor:
                     if hasattr(node, 'node') and hasattr(node.node, 'metadata'):
                         logger.info(f"  Has metadata: True")
                         logger.info(f"  Metadata keys: {list(node.node.metadata.keys())}")
-                        if 'arxiv_url' in node.node.metadata:
-                            logger.info(f"  arXiv URL: {node.node.metadata['arxiv_url']}")
+                        if 'arxiv_urls' in node.node.metadata:
+                            logger.info(f"  arXiv URLs: {node.node.metadata['arxiv_urls']}")
                         else:
-                            logger.info("  No arxiv_url in metadata")
+                            logger.info("  No arxiv_urls in metadata")
                     else:
                         logger.info("  No metadata found")
 
@@ -70,13 +70,15 @@ class QueryProcessor:
                 "answer": str(response),
                 "source_nodes": [
                     {
-                        "text": node.node.text if hasattr(node.node, 'text') else str(node.node),
+                        "text": node.node.get_text() if hasattr(node, 'node') and hasattr(node.node, 'get_text') else str(node),
                         "score": node.score if hasattr(node, 'score') else None,
-                        "doc_id": node.node.doc_id if hasattr(node.node, 'doc_id') else None,
-                        "arxiv_url": node.node.metadata.get('arxiv_url') if hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None
+                        "doc_id": node.node.doc_id if hasattr(node, 'node') and hasattr(node.node, 'doc_id') else None,
+                        "arxiv_url": node.node.metadata.get('arxiv_urls', [None])[0] if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None,
+                        "filename": node.node.metadata.get('filenames', [None])[0] if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None,
+                        "arxiv_id": node.node.metadata.get('arxiv_ids', [None])[0] if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None
                     }
                     for node in response.source_nodes
-                ] if hasattr(response, 'source_nodes') else []
+                ]
             }
             
         except Exception as e:

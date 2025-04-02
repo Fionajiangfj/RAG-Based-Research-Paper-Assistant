@@ -4,7 +4,8 @@ from pinecone import Pinecone, ServerlessSpec, DeletionProtection
 from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.core.storage.docstore import SimpleDocumentStore
-from llama_index.embeddings.ollama import OllamaEmbedding
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core import Settings
 
 import json
@@ -34,11 +35,10 @@ class IndexManager:
         self.redis_manager = RedisManager()
         self._query_processor = None
         
-        # Initialize Ollama embedding model and set it globally
-        self.embed_model = OllamaEmbedding(
-            model_name="nomic-embed-text",
-            base_url="http://localhost:11434"
-        )
+        # Initialize OpenAI embedding model and set it globally
+        llm = OpenAI(model="gpt-4o")
+        self.embed_model = OpenAIEmbedding()
+        Settings.llm = llm
         Settings.embed_model = self.embed_model
         
         # Initialize Pinecone
@@ -60,7 +60,7 @@ class IndexManager:
                 logger.info(f"Creating new Pinecone index: {self.index_name}")
                 self.pinecone_client.create_index(
                     name=self.index_name,
-                    dimension=768,  
+                    dimension=1536,  # OpenAI text-embedding-ada-002 dimension
                     metric="cosine",
                     deletion_protection=DeletionProtection.DISABLED,
                     spec=ServerlessSpec(
@@ -75,7 +75,7 @@ class IndexManager:
             # Connect to index
             self.pinecone_index = self.pinecone_client.Index(self.index_name)
             
-            # Initialize vector store with Ollama embedding model
+            # Initialize vector store with OpenAI embedding model
             self.vector_store = PineconeVectorStore(
                 pinecone_index=self.pinecone_index,
                 text_key="text"
