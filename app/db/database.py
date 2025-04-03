@@ -27,6 +27,9 @@ from sqlalchemy.orm import DeclarativeBase
 class Base(DeclarativeBase):
     pass
 
+# Import models to ensure they are registered with Base
+from app.db.models import Node
+
 # Dependency to get DB session
 def get_db():
     db = SessionLocal()
@@ -73,15 +76,4 @@ def test_connection():
         print(f"Connection error: {e}")
 
 if __name__ == "__main__":
-    test_connection()
-
-class Document(Base):
-    __tablename__ = "documents"
-
-    id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String, index=True)
-    doc_id = Column(String, unique=True, index=True)
-    content_type = Column(String)
-    content = Column(Text)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    node_metadata = Column(Text, nullable=True) 
+    test_connection() 

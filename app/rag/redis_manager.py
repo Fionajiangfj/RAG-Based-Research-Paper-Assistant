@@ -1,19 +1,32 @@
 import redis
 import pickle
 import logging
+import os
 from typing import Optional, List, Dict, Any
-from llama_index.core import Document
+from llama_index.core.schema import Node
 
 logger = logging.getLogger(__name__)
 
 class RedisManager:
     def __init__(self, host: str = "localhost", port: int = 6379, db: int = 0):
-        self.redis_client = redis.Redis(
-            host=host,
-            port=port,
-            db=db,
-            decode_responses=False  # Keep binary data as is
-        )
+        # Use REDIS_URL from environment if available
+        redis_url = os.environ.get("REDIS_URL")
+        
+        if redis_url:
+            logger.info(f"Connecting to Redis using URL from environment")
+            self.redis_client = redis.from_url(
+                redis_url,
+                decode_responses=False  # Keep binary data as is
+            )
+        else:
+            logger.info(f"Connecting to Redis at {host}:{port}")
+            self.redis_client = redis.Redis(
+                host=host,
+                port=port,
+                db=db,
+                decode_responses=False  # Keep binary data as is
+            )
+            
         self.initialization_key = "initialization_complete"
         self.nodes_key = "nodes"
         self.index_stats_key = "index_stats"
@@ -27,7 +40,7 @@ class RedisManager:
         self.redis_client.set(self.initialization_key, "true")
         logger.info("Marked system as initialized in Redis")
 
-    def store_nodes(self, nodes: List[Document]):
+    def store_nodes(self, nodes: List[Node]):
         """Store nodes in Redis"""
         try:
             serialized_nodes = pickle.dumps(nodes)
@@ -37,7 +50,7 @@ class RedisManager:
             logger.error(f"Error storing nodes in Redis: {str(e)}")
             raise
 
-    def get_nodes(self) -> Optional[List[Document]]:
+    def get_nodes(self) -> Optional[List[Node]]:
         """Retrieve nodes from Redis"""
         try:
             data = self.redis_client.get(self.nodes_key)
@@ -54,7 +67,7 @@ class RedisManager:
         """Store index statistics in Redis"""
         try:
             self.redis_client.set(self.index_stats_key, pickle.dumps(stats))
-            logger.info("Stored index stats in Redis")
+            # logger.info("Stored index stats in Redis")
         except Exception as e:
             logger.error(f"Error storing index stats in Redis: {str(e)}")
             raise
@@ -77,4 +90,13 @@ class RedisManager:
             logger.info("Cleared all Redis data")
         except Exception as e:
             logger.error(f"Error clearing Redis data: {str(e)}")
+            raise
+
+    def cleanup(self):
+        """Clean up Redis resources"""
+        try:
+            self.redis_client.close()
+            logger.info("Closed Redis connection")
+        except Exception as e:
+            logger.error(f"Error cleaning up Redis resources: {str(e)}")
             raise 

@@ -23,6 +23,9 @@ class SourceNode(BaseModel):
     text: str
     score: Optional[float] = None
     doc_id: Optional[str] = None
+    arxiv_url: Optional[str] = None
+    filename: Optional[str] = None
+    arxiv_id: Optional[str] = None
 
 class QueryResponse(BaseModel):
     answer: str
@@ -53,19 +56,18 @@ async def initialize_index():
             index_manager._init_storage_context()
             
             # Create the index
-            index = index_manager.index_documents(stored_nodes, stored_nodes)
+            index = index_manager.index_documents(stored_nodes)
             # Store index state in Redis
             redis_manager.mark_initialized()
             return index
             
         # If we get here, there's no index and no stored nodes
         # Process documents as a last resort
-        nodes, leaf_nodes = document_processor.process_directory()
-        if nodes and leaf_nodes:
+        nodes = document_processor.process_directory()
+        if nodes:
             # Store and index the nodes
-            index_manager.node_store.store_nodes(nodes)
             index_manager._init_storage_context()
-            index = index_manager.index_documents(nodes, leaf_nodes)
+            index = index_manager.index_documents(nodes)
             # Store index state in Redis
             redis_manager.mark_initialized()
             return index

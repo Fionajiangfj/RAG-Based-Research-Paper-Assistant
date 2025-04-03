@@ -1,5 +1,6 @@
 import logging
 import os
+import atexit
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -19,8 +20,13 @@ logging.basicConfig(
 # Create upload directory if it doesn't exist
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
+# Global Redis manager instance
+redis_manager = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global redis_manager
+    
     # Initialize Redis
     redis_manager = RedisManager()
     
@@ -39,8 +45,17 @@ async def lifespan(app: FastAPI):
         logging.info("Using existing system state from Redis")
     
     yield
-    # Shutdown
-    pass
+    
+    # Cleanup on shutdown
+    if redis_manager:
+        try:
+            redis_manager.cleanup()
+            logging.info("Cleaned up Redis resources")
+        except Exception as e:
+            logging.error(f"Error during Redis cleanup: {str(e)}")
+
+# Register cleanup function with atexit
+atexit.register(lambda: redis_manager.cleanup() if redis_manager else None)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

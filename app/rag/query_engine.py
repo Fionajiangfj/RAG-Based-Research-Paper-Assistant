@@ -43,32 +43,44 @@ class QueryProcessor:
             logger.info("Attempting to query the engine...")
             response = self.query_engine.query(query_text)
             logger.info("Query completed successfully")
-            
-            # Log response details
-            logger.info(f"Query response: {str(response)}")
+
             if hasattr(response, 'source_nodes'):
                 logger.info(f"Number of source nodes: {len(response.source_nodes)}")
                 for idx, node in enumerate(response.source_nodes):
                     logger.info(f"Source node {idx + 1}:")
                     # Handle different node types
                     if hasattr(node, 'node'):
-                        text = node.node.text if hasattr(node.node, 'text') else str(node.node)
+                        text = node.node.get_text() if hasattr(node.node, 'text') else str(node.node)
                         logger.info(f"  Text: {text[:200]}...")  # First 200 chars
                     if hasattr(node, 'score'):
                         logger.info(f"  Score: {node.score}")
-                    if hasattr(node, 'node') and hasattr(node.node, 'doc_id'):
+                    if hasattr(node, 'node') and hasattr(node.node, 'node_id'):
+                        logger.info(f"  Node ID: {node.node.node_id}")
+                    elif hasattr(node, 'node') and hasattr(node.node, 'doc_id'):
                         logger.info(f"  Doc ID: {node.node.doc_id}")
+                    if hasattr(node, 'node') and hasattr(node.node, 'metadata'):
+                        logger.info(f"  Has metadata: True")
+                        logger.info(f"  Metadata keys: {list(node.node.metadata.keys())}")
+                        if 'arxiv_id' in node.node.metadata:
+                            logger.info(f"  arXiv ID: {node.node.metadata['arxiv_id']}")
+                        if 'arxiv_url' in node.node.metadata:
+                            logger.info(f"  arXiv URL: {node.node.metadata['arxiv_url']}")
+                    else:
+                        logger.info("  No metadata found")
 
             return {
                 "answer": str(response),
                 "source_nodes": [
                     {
-                        "text": node.node.text if hasattr(node.node, 'text') else str(node.node),
+                        "text": node.node.get_text() if hasattr(node, 'node') and hasattr(node.node, 'get_text') else str(node),
                         "score": node.score if hasattr(node, 'score') else None,
-                        "doc_id": node.node.doc_id if hasattr(node.node, 'doc_id') else None
+                        "doc_id": node.node.metadata.get('arxiv_id') if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None,
+                        "arxiv_url": node.node.metadata.get('arxiv_url') if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None,
+                        "filename": node.node.metadata.get('filename') if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None,
+                        "arxiv_id": node.node.metadata.get('arxiv_id') if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None
                     }
                     for node in response.source_nodes
-                ] if hasattr(response, 'source_nodes') else []
+                ]
             }
             
         except Exception as e:

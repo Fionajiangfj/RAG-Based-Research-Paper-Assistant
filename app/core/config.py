@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     
     # Pinecone
     PINECONE_API_KEY: str = os.getenv("PINECONE_API_KEY")
-    PINECONE_INDEX_NAME: str = os.getenv("PINECONE_INDEX_NAME", "rag-based-research-paper-assistant-v2")
+    PINECONE_INDEX_NAME: str = os.getenv("PINECONE_INDEX_NAME")
     PINECONE_ENVIRONMENT: str = os.getenv("PINECONE_ENVIRONMENT", "us-east-1")
     
     # File storage
