@@ -24,6 +24,8 @@ class SourceNode(BaseModel):
     score: Optional[float] = None
     doc_id: Optional[str] = None
     arxiv_url: Optional[str] = None
+    filename: Optional[str] = None
+    arxiv_id: Optional[str] = None
 
 class QueryResponse(BaseModel):
     answer: str
