@@ -1,7 +1,7 @@
 services:
   # Backend API service
   - type: web
-    name: rag-research-paper-assistant
+    name: RAG-Based-Research-Paper-Assistant
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -14,7 +14,7 @@ services:
         value: us-east-1
       - key: DATABASE_URL
         fromDatabase:
-          name: rag-research-paper-db-v3
+          name: rag-research-paper-db-v4
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
@@ -36,7 +36,7 @@ services:
     staticPublishPath: ./frontend/build
     envVars:
       - key: REACT_APP_API_URL
-        value: https://rag-research-paper-assistant-api.onrender.com/api/v1
+        value: https://rag-based-research-paper-assistant.onrender.com
 
 # Redis service for caching
   - type: redis
@@ -47,6 +47,6 @@ services:
     plan: free
 
 databases:
-  - name: rag-research-paper-db-v3
-    databaseName: ragdb_v3
-    user: ragdb_v3_user
+  - name: rag-research-paper-db-v4
+    databaseName: rag_research_paper_db_v4
+    user: rag_research_paper_db_v4_user
