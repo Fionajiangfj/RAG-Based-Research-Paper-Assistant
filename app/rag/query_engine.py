@@ -55,10 +55,16 @@ class QueryProcessor:
                     if hasattr(node, 'score'):
                         logger.info(f"  Score: {node.score}")
                     if hasattr(node, 'node') and hasattr(node.node, 'node_id'):
-                        logger.info(f"  Doc ID: {node.node.node_id}")
+                        logger.info(f"  Node ID: {node.node.node_id}")
+                    elif hasattr(node, 'node') and hasattr(node.node, 'doc_id'):
+                        logger.info(f"  Doc ID: {node.node.doc_id}")
                     if hasattr(node, 'node') and hasattr(node.node, 'metadata'):
                         logger.info(f"  Has metadata: True")
                         logger.info(f"  Metadata keys: {list(node.node.metadata.keys())}")
+                        if 'arxiv_id' in node.node.metadata:
+                            logger.info(f"  arXiv ID: {node.node.metadata['arxiv_id']}")
+                        if 'arxiv_url' in node.node.metadata:
+                            logger.info(f"  arXiv URL: {node.node.metadata['arxiv_url']}")
                     else:
                         logger.info("  No metadata found")
 

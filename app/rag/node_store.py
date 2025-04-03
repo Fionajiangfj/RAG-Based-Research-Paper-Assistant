@@ -1,6 +1,7 @@
 import logging
 from sqlalchemy.orm import Session
 import json
+import re
 from app.db.database import SessionLocal
 from app.db.models import Node
 from llama_index.core import Document as LlamaDocument
@@ -11,6 +12,28 @@ class NodeStore:
     def __init__(self):
         self.storage_context = None
     
+    def _sanitize_text(self, text):
+        """Sanitize text by removing problematic Unicode characters"""
+        if not text:
+            return text
+        # Replace surrogate pairs and other problematic characters
+        return text.encode('ascii', 'ignore').decode('ascii')
+    
+    def _sanitize_metadata(self, metadata):
+        """Sanitize metadata by removing problematic Unicode characters"""
+        if not metadata:
+            return {}
+        
+        sanitized = {}
+        for key, value in metadata.items():
+            if isinstance(value, str):
+                sanitized[key] = self._sanitize_text(value)
+            elif isinstance(value, list):
+                sanitized[key] = [self._sanitize_text(item) if isinstance(item, str) else item for item in value]
+            else:
+                sanitized[key] = value
+        return sanitized
+    
     def store_nodes(self, nodes):
         """Store nodes in database"""
         try:
@@ -18,22 +41,27 @@ class NodeStore:
                 for node in nodes:
                     logger.info(f"Storing node {node.node_id}")
                     logger.info(f"Node metadata before storage: {node.metadata}")
+                    
+                    # Sanitize text and metadata to handle Unicode issues
+                    sanitized_text = self._sanitize_text(node.text)
+                    sanitized_metadata = self._sanitize_metadata(node.metadata)
+                    
                     existing_doc = db.query(Node).filter(
                         Node.node_id == node.node_id
                     ).first()
                     
                     if existing_doc:
-                        existing_doc.node_text = node.text
-                        existing_doc.node_metadata = json.dumps(node.metadata) if node.metadata else None
-                        logger.info(f"Updated existing doc {node.node_id} with metadata: {node.metadata}")
+                        existing_doc.node_text = sanitized_text
+                        existing_doc.node_metadata = json.dumps(sanitized_metadata) if sanitized_metadata else None
+                        logger.info(f"Updated existing doc {node.node_id} with sanitized metadata")
                     else:
                         doc = Node(
                             node_id=node.node_id,
-                            node_text=node.text,
-                            node_metadata=json.dumps(node.metadata) if node.metadata else None
+                            node_text=sanitized_text,
+                            node_metadata=json.dumps(sanitized_metadata) if sanitized_metadata else None
                         )
                         db.add(doc)
-                        logger.info(f"Created new doc {node.node_id} with metadata: {node.metadata}")
+                        logger.info(f"Created new doc {node.node_id} with sanitized metadata")
                 db.commit()
                 logger.info(f"Stored {len(nodes)} nodes in database")
                 return True

@@ -1,5 +1,6 @@
 import os
 import logging
+import re
 from llama_index.core import Document
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core import SimpleDirectoryReader
@@ -28,6 +29,22 @@ class DocumentProcessor:
         if not os.path.exists(self.upload_dir):
             os.makedirs(self.upload_dir)
     
+    def _clean_text(self, text):
+        """Clean text by removing problematic characters"""
+        if not text:
+            return ""
+        
+        # Replace null characters
+        text = text.replace('\x00', '')
+        
+        # Replace other problematic control characters
+        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
+        
+        # Handle Unicode surrogate pairs by replacing them with placeholders
+        # This is a common issue with mathematical symbols in papers
+        text = text.encode('ascii', 'replace').decode('ascii')
+        
+        return text
     
     def process_directory(self):
         """Process all PDF files in the upload directory"""
@@ -49,8 +66,8 @@ class DocumentProcessor:
             doc_ids = []
             
             for doc in documents:
-                # Replace null characters with empty string
-                cleaned_text = doc.text.replace('\x00', '')
+                # Clean text to remove problematic characters
+                cleaned_text = self._clean_text(doc.text)
                 
                 # Extract metadata from file path
                 file_path = doc.metadata.get('file_path', '') if doc.metadata else ''
