@@ -1,7 +1,8 @@
 import logging
 from sqlalchemy.orm import Session
 import json
-from app.db.database import Document, SessionLocal
+from app.db.database import SessionLocal
+from app.db.models import Node
 from llama_index.core import Document as LlamaDocument
 
 logger = logging.getLogger(__name__)
@@ -15,20 +16,20 @@ class NodeStore:
         try:
             with SessionLocal() as db:
                 for node in nodes:
-                    # logger.info(f"Storing node {node.node_id}")
-                    # logger.info(f"Node metadata before storage: {node.metadata}")
-                    existing_doc = db.query(Document).filter(
-                        Document.doc_id == node.node_id
+                    logger.info(f"Storing node {node.node_id}")
+                    logger.info(f"Node metadata before storage: {node.metadata}")
+                    existing_doc = db.query(Node).filter(
+                        Node.node_id == node.node_id
                     ).first()
                     
                     if existing_doc:
-                        existing_doc.content = node.text
+                        existing_doc.node_text = node.text
                         existing_doc.node_metadata = json.dumps(node.metadata) if node.metadata else None
-                        # logger.info(f"Updated existing doc {node.node_id} with metadata: {node.metadata}")
+                        logger.info(f"Updated existing doc {node.node_id} with metadata: {node.metadata}")
                     else:
-                        doc = Document(
-                            doc_id=node.node_id,
-                            content=node.text,
+                        doc = Node(
+                            node_id=node.node_id,
+                            node_text=node.text,
                             node_metadata=json.dumps(node.metadata) if node.metadata else None
                         )
                         db.add(doc)
@@ -45,16 +46,16 @@ class NodeStore:
         try:
             with SessionLocal() as db:
                 try:
-                    stored_docs = db.query(Document).all()
+                    stored_docs = db.query(Node).all()
                     nodes = []
                     for doc in stored_docs:
-                        # logger.info(f"Loading doc {doc.doc_id}")
-                        # logger.info(f"Raw metadata from DB: {doc.node_metadata}")
+                        logger.info(f"Loading doc {doc.node_id}")
+                        logger.info(f"Raw metadata from DB: {doc.node_metadata}")
                         metadata = json.loads(doc.node_metadata) if doc.node_metadata else {}
-                        # logger.info(f"Parsed metadata: {metadata}")
+                        logger.info(f"Parsed metadata: {metadata}")
                         llama_doc = LlamaDocument(
-                            doc_id=doc.doc_id,
-                            text=doc.content,
+                            doc_id=doc.node_id,
+                            text=doc.node_text,
                             metadata=metadata
                         )
                         nodes.append(llama_doc)
@@ -71,8 +72,8 @@ class NodeStore:
         """Remove nodes that no longer exist"""
         try:
             with SessionLocal() as db:
-                db.query(Document).filter(
-                    Document.doc_id.notin_(doc_ids)
+                db.query(Node).filter(
+                    Node.node_id.notin_(doc_ids)
                 ).delete(synchronize_session=False)
                 db.commit()
                 logger.info("Cleaned up old nodes from database")
@@ -84,7 +85,7 @@ class NodeStore:
         """Delete all nodes from database"""
         try:
             with SessionLocal() as db:
-                db.query(Document).delete(synchronize_session=False)
+                db.query(Node).delete(synchronize_session=False)
                 db.commit()
                 logger.info("Deleted all nodes from database")
         except Exception as e:

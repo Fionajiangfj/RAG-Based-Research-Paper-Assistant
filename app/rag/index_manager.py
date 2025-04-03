@@ -12,7 +12,8 @@ import json
 import threading
 
 from app.core.config import settings
-from app.db.database import SessionLocal, Document
+from app.db.database import SessionLocal
+from app.db.models import Node
 from app.rag.node_store import NodeStore
 from app.rag.redis_manager import RedisManager
 from app.rag.query_engine import QueryProcessor
@@ -124,7 +125,7 @@ class IndexManager:
             index_stats = self.pinecone_index.describe_index_stats()
             
             # Always update storage context with all nodes
-            self.storage_context.docstore.add_documents(nodes)
+            # self.storage_context.docstore.add_documents(nodes)
             
             # Use lock to prevent multiple workers from storing in Redis simultaneously
             with redis_lock:
@@ -158,47 +159,46 @@ class IndexManager:
             raise
     
     def get_index(self):
-        """Get existing index from Pinecone"""
+        """Get existing index from Pinecone with Redis caching"""
         try:
-            # Check if index is already initialized in Redis
+            # Fast path: Use Redis cache if available
             if self.redis_manager.is_initialized():
-                # Create index from vector store with storage context
-                index = VectorStoreIndex.from_vector_store(
+                logger.info("Using cached index from Redis")
+                return VectorStoreIndex.from_vector_store(
                     vector_store=self.vector_store,
                     storage_context=self.storage_context
                 )
-                return index
             
+            # Check Pinecone index status
             index_stats = self.pinecone_index.describe_index_stats()
-            
             if index_stats.total_vector_count == 0:
                 logger.warning("Pinecone index is empty")
                 return None
             
-            # Create storage context and load all documents
+            # Rebuild storage context and load nodes
+            logger.info("Rebuilding storage context from database")
             self.storage_context = StorageContext.from_defaults(
                 vector_store=self.vector_store
             )
             
-            # Load documents from database to rebuild docstore
             nodes = self.node_store.load_nodes()
-            if nodes:
-                self.storage_context.docstore.add_documents(nodes)
-                # Store in Redis for future use with lock
-                with redis_lock:
-                    self.redis_manager.store_nodes(nodes)
-                    self.redis_manager.store_index_stats(index_stats)
-                    self.redis_manager.mark_initialized()
-                    logger.info(f"Loaded {len(nodes)} documents into storage context and Redis")
+            if not nodes:
+                logger.warning("No nodes found in database")
+                return None
             
-            # Create index from vector store with storage context
-            index = VectorStoreIndex.from_vector_store(
+            # Update storage and cache
+            self.storage_context.docstore.add_documents(nodes)
+            with redis_lock:
+                self.redis_manager.store_nodes(nodes)
+                self.redis_manager.store_index_stats(index_stats)
+                self.redis_manager.mark_initialized()
+                logger.info(f"Loaded {len(nodes)} documents into storage and cache")
+            
+            # Create and return index
+            return VectorStoreIndex.from_vector_store(
                 vector_store=self.vector_store,
                 storage_context=self.storage_context
             )
-            
-            logger.info(f"Retrieved index with {index_stats.total_vector_count} vectors")
-            return index
             
         except Exception as e:
             logger.error(f"Error getting index: {str(e)}")
@@ -209,8 +209,8 @@ class IndexManager:
         try:
             with SessionLocal() as db:
                 # Delete documents not in the current set
-                db.query(Document).filter(
-                    Document.doc_id.notin_(doc_ids)
+                db.query(Node).filter(
+                    Node.node.notin_(doc_ids)
                 ).delete(synchronize_session=False)
                 db.commit()
                 logger.info("Cleaned up old documents from database")

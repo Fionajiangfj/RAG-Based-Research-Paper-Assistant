@@ -2,7 +2,7 @@ import redis
 import pickle
 import logging
 from typing import Optional, List, Dict, Any
-from llama_index.core import Document
+from llama_index.core.schema import Node
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class RedisManager:
         self.redis_client.set(self.initialization_key, "true")
         logger.info("Marked system as initialized in Redis")
 
-    def store_nodes(self, nodes: List[Document]):
+    def store_nodes(self, nodes: List[Node]):
         """Store nodes in Redis"""
         try:
             serialized_nodes = pickle.dumps(nodes)
@@ -37,7 +37,7 @@ class RedisManager:
             logger.error(f"Error storing nodes in Redis: {str(e)}")
             raise
 
-    def get_nodes(self) -> Optional[List[Document]]:
+    def get_nodes(self) -> Optional[List[Node]]:
         """Retrieve nodes from Redis"""
         try:
             data = self.redis_client.get(self.nodes_key)

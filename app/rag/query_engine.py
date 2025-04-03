@@ -74,8 +74,8 @@ class QueryProcessor:
                         "score": node.score if hasattr(node, 'score') else None,
                         "doc_id": node.node.doc_id if hasattr(node, 'node') and hasattr(node.node, 'doc_id') else None,
                         "arxiv_url": node.node.metadata.get('arxiv_urls', [None])[0] if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None,
-                        "filename": node.node.metadata.get('filenames', [None])[0] if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None,
-                        "arxiv_id": node.node.metadata.get('arxiv_ids', [None])[0] if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None
+                        "filenames": node.node.metadata.get('filenames', []) if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else [],
+                        "arxiv_ids": node.node.metadata.get('arxiv_ids', []) if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else []
                     }
                     for node in response.source_nodes
                 ]

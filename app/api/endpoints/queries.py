@@ -64,7 +64,6 @@ async def initialize_index():
         nodes = document_processor.process_directory()
         if nodes:
             # Store and index the nodes
-            index_manager.node_store.store_nodes(nodes)
             index_manager._init_storage_context()
             index = index_manager.index_documents(nodes)
             # Store index state in Redis

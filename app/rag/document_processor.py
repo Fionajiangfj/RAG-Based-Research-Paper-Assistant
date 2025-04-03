@@ -62,23 +62,32 @@ class DocumentProcessor:
                     'filename': filename,
                     'arxiv_id': arxiv_id
                 }
-                new_doc = Document(text=doc.text, metadata=metadata)
+                new_doc = Document(text=cleaned_text, metadata=metadata)
                 cleaned_docs.append(new_doc)
             
-            # Combine all documents into one while preserving metadata from all documents
-            combined_metadata = {
-                'arxiv_urls': [doc.metadata.get('arxiv_url') for doc in cleaned_docs if doc.metadata and 'arxiv_url' in doc.metadata],
-                'filenames': [doc.metadata.get('filename') for doc in cleaned_docs if doc.metadata and 'filename' in doc.metadata],
-                'arxiv_ids': [doc.metadata.get('arxiv_id') for doc in cleaned_docs if doc.metadata and 'arxiv_id' in doc.metadata]
-            }
             
+            # Create a combined document with all texts but with proper metadata
+            # Use a list of URLs instead of a single one since we're combining multiple docs
             combined_doc = Document(
                 text="\n\n".join([doc.text for doc in cleaned_docs]),
-                metadata=combined_metadata
+                metadata={
+                    'arxiv_urls': [doc.metadata['arxiv_url'] for doc in cleaned_docs],
+                    'filenames': [doc.metadata['filename'] for doc in cleaned_docs],
+                    'arxiv_ids': [doc.metadata['arxiv_id'] for doc in cleaned_docs]
+                }
             )
             
             # Parse into nodes using sentence splitter
             nodes = self.text_splitter.get_nodes_from_documents([combined_doc])
+            
+            # Ensure each node has the metadata from the parent document
+            for node in nodes:
+                if not hasattr(node, 'metadata') or not node.metadata:
+                    node.metadata = combined_doc.metadata
+                else:
+                    # Update existing metadata with parent document metadata
+                    node.metadata.update(combined_doc.metadata)
+                logger.info(f"Node metadata after update: {node.metadata}")
             
             logger.info(f"Processed directory {self.upload_dir}: {len(nodes)} nodes")
             
