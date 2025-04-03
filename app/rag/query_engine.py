@@ -54,15 +54,11 @@ class QueryProcessor:
                         logger.info(f"  Text: {text[:200]}...")  # First 200 chars
                     if hasattr(node, 'score'):
                         logger.info(f"  Score: {node.score}")
-                    if hasattr(node, 'node') and hasattr(node.node, 'doc_id'):
-                        logger.info(f"  Doc ID: {node.node.doc_id}")
+                    if hasattr(node, 'node') and hasattr(node.node, 'node_id'):
+                        logger.info(f"  Doc ID: {node.node.node_id}")
                     if hasattr(node, 'node') and hasattr(node.node, 'metadata'):
                         logger.info(f"  Has metadata: True")
                         logger.info(f"  Metadata keys: {list(node.node.metadata.keys())}")
-                        if 'arxiv_urls' in node.node.metadata:
-                            logger.info(f"  arXiv URLs: {node.node.metadata['arxiv_urls']}")
-                        else:
-                            logger.info("  No arxiv_urls in metadata")
                     else:
                         logger.info("  No metadata found")
 
@@ -72,7 +68,7 @@ class QueryProcessor:
                     {
                         "text": node.node.get_text() if hasattr(node, 'node') and hasattr(node.node, 'get_text') else str(node),
                         "score": node.score if hasattr(node, 'score') else None,
-                        "doc_id": node.node.doc_id if hasattr(node, 'node') and hasattr(node.node, 'doc_id') else None,
+                        "doc_id": node.node.metadata.get('arxiv_id') if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None,
                         "arxiv_url": node.node.metadata.get('arxiv_url') if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None,
                         "filename": node.node.metadata.get('filename') if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None,
                         "arxiv_id": node.node.metadata.get('arxiv_id') if hasattr(node, 'node') and hasattr(node.node, 'metadata') and isinstance(node.node.metadata, dict) else None
