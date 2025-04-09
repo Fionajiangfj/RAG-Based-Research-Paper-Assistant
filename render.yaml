@@ -1,5 +1,4 @@
 services:
-  # Backend API service
   - type: web
     name: rag-research-paper-assistant
     runtime: python
@@ -9,44 +8,24 @@ services:
       - key: PINECONE_API_KEY
         sync: false
       - key: PINECONE_INDEX_NAME
-        value: rag-based-research-paper-assistant-v4
+        value: rag-based-research-paper-assistant-v3
       - key: PINECONE_ENVIRONMENT
         value: us-east-1
       - key: DATABASE_URL
         fromDatabase:
           name: rag-research-paper-db-v3
           property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: redis
+          type: redis
+          property: connectionString
       - key: SECRET_KEY
         generateValue: true
       - key: PYTHON_VERSION
         value: 3.9.9
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: rag-paper-cache
-          property: connectionString
-      - key: UPLOAD_DIR
-        value: ./papers
-
-  # Frontend service
-  - type: web
-    name: rag-research-paper-assistant-frontend
-    runtime: static
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: ./frontend/build
-    envVars:
-      - key: REACT_APP_API_URL
-        value: https://rag-research-paper-assistant-api.onrender.com/api/v1
-
-# Redis service for caching
-  - type: redis
-    name: rag-paper-cache
-    ipAllowList: # CIDR blocks that can access this service
-      - source: 0.0.0.0/0
-        description: everywhere
-    plan: free
 
 databases:
-  - name: rag-research-paper-db-v3
-    databaseName: ragdb_v3
-    user: ragdb_v3_user
+  - name: rag-research-paper-db-v4
+    databaseName: rag_research_paper_db_v4
+    user: rag_research_paper_db_v4_user
