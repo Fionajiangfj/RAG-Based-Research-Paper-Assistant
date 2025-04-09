@@ -1,17 +1,20 @@
 import redis
 import pickle
 import logging
+import os
 from typing import Optional, List, Dict, Any
 from llama_index.core.schema import Node
 
 logger = logging.getLogger(__name__)
 
 class RedisManager:
-    def __init__(self, host: str = "localhost", port: int = 6379, db: int = 0):
-        self.redis_client = redis.Redis(
-            host=host,
-            port=port,
-            db=db,
+    def __init__(self):
+        redis_url = os.getenv("REDIS_URL")
+        if not redis_url:
+            raise ValueError("REDIS_URL environment variable is not set")
+            
+        self.redis_client = redis.from_url(
+            redis_url,
             decode_responses=False  # Keep binary data as is
         )
         self.initialization_key = "initialization_complete"
