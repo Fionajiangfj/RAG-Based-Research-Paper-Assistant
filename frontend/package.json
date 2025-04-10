@@ -24,6 +24,9 @@
     "typescript": "^5.0.4",
     "web-vitals": "^2.1.4"
   },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
