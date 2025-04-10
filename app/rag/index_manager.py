@@ -4,12 +4,13 @@ from pinecone import Pinecone, ServerlessSpec, DeletionProtection
 from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.core.storage.docstore import SimpleDocumentStore
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core import Settings
 
 import json
 import threading
+import os
 
 from app.core.config import settings
 from app.db.database import SessionLocal
@@ -36,8 +37,12 @@ class IndexManager:
         self.redis_manager = RedisManager()
         self._query_processor = None
         
-        # Initialize OpenAI embedding model and set it globally
-        llm = OpenAI(model="gpt-4o")
+        # Initialize Ollama model and set it globally
+        llm = Ollama(
+            model=os.getenv("OLLAMA_MODEL", "llama3.2"),
+            base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            request_timeout=300.0
+        )
         self.embed_model = OpenAIEmbedding()
         Settings.llm = llm
         Settings.embed_model = self.embed_model

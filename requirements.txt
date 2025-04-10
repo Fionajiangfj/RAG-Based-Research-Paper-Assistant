@@ -21,7 +21,8 @@ openai>=1.3.0
 # The `[pdf]` extra ensures that PDF dependencies (like PyMuPDF or pdfminer) get installed
 # so that SimpleDirectoryReader can load PDF files properly.
 llama-index[pdf]>=0.9.0
-llama-index-embeddings-ollama
+# llama-index-embeddings-ollama
+llama-index-llms-ollama
 
 # TruLens for model evaluation and feedback
 # trulens-eval
