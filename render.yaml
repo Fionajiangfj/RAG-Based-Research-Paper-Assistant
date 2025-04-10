@@ -1,9 +1,13 @@
 services:
   - type: web
     name: rag-research-paper-assistant-frontend
+    rootDir: frontend
     runtime: node
-    buildCommand: cd frontend && npm install && npm run build
-    startCommand: cd frontend && serve -s build
+    buildCommand: |
+      npm install
+      npm install -g serve
+      npm run build
+    startCommand: serve -s build
     envVars:
       - key: REACT_APP_API_URL
         value: https://rag-based-research-paper-assistant.onrender.com
@@ -12,6 +16,7 @@ services:
 
   - type: web
     name: rag-research-paper-assistant
+    rootDir: .
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -19,7 +24,7 @@ services:
       - key: PINECONE_API_KEY
         sync: false
       - key: PINECONE_INDEX_NAME
-        value: rag-based-research-paper-assistant-v3
+        value: rag-based-research-paper-assistant-v4
       - key: PINECONE_ENVIRONMENT
         value: us-east-1
       - key: DATABASE_URL
