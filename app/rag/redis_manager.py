@@ -8,6 +8,18 @@ from llama_index.core.schema import Node
 logger = logging.getLogger(__name__)
 
 class RedisManager:
+    # def __init__(self, host: str = "localhost", port: int = 6379, db: int = 0):
+    #     self.redis_client = redis.Redis(
+    #         host=host,
+    #         port=port,
+    #         db=db,
+    #         decode_responses=False  # Keep binary data as is
+    #     )
+    #     self.initialization_key = "initialization_complete"
+    #     self.nodes_key = "nodes"
+    #     self.index_stats_key = "index_stats"
+
+
     def __init__(self):
         redis_url = os.getenv("REDIS_URL")
         if not redis_url:
