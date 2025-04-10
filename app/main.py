@@ -63,10 +63,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Set up CORS
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=["https://rag-research-paper-assistant-frontend.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
